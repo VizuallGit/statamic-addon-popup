@@ -42,20 +42,47 @@
                 open(el) {
                     this.triggerEl = el || null;
 
-                    // Pre-size the popup at the correct width *before* it renders,
-                    // so $nextTick can measure the correct height and position it cleanly.
+                    // Pre-size at the correct width before render so the browser can
+                    // measure the correct height when content loads.
                     const cpRight      = this.cpRight();
                     const desiredWidth = Math.min(this.maxWidth, cpRight - 16);
                     this.popupStyle    = { opacity: 0, width: `${desiredWidth}px` };
                     this.backdropStyle = {};
                     this.isOpen        = true;
+                    this._showTimer    = null;
 
                     document.body.classList.add('popup-group-open');
                     this.$nextTick(() => {
-                        this.computePosition();
-                        // Re-compute once more after a short delay in case content
-                        // is still loading (assets thumbnails, etc.).
-                        setTimeout(() => { this.computePosition(); this.bindEvents(); }, 80);
+                        const popup = this.$refs.popup;
+                        if (!popup) return;
+
+                        // scheduleShow debounces so we only reveal the popup once the
+                        // height has been stable for 60 ms (bard / async fields done).
+                        const scheduleShow = () => {
+                            clearTimeout(this._showTimer);
+                            this._showTimer = setTimeout(() => {
+                                this.computePosition();
+                                this._ro?.disconnect();
+                                this._ro = null;
+                                this.bindEvents();
+                            }, 60);
+                        };
+
+                        if (typeof ResizeObserver !== 'undefined') {
+                            this._ro = new ResizeObserver(scheduleShow);
+                            this._ro.observe(popup);
+                        }
+
+                        // Safety net: always show after 400 ms even if still resizing.
+                        setTimeout(() => {
+                            if (this.isOpen && !this.popupStyle.opacity) {
+                                this.computePosition();
+                                this._ro?.disconnect(); this._ro = null;
+                                this.bindEvents();
+                            }
+                        }, 400);
+
+                        scheduleShow(); // trigger once immediately
                     });
                 },
 
@@ -65,6 +92,9 @@
                     document.body.classList.remove('popup-group-open');
                     this.unbindEvents();
                     this.triggerEl = null;
+                    clearTimeout(this._showTimer);
+                    this._ro?.disconnect();
+                    this._ro = null;
                 },
 
                 toggle(e) {
