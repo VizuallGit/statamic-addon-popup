@@ -104,6 +104,12 @@
                     this.isOpen ? this.close() : this.open(el);
                 },
 
+                onBackdropMousedown() {
+                    // Don't close while a Statamic stack (asset browser, slide-over) is active.
+                    if (document.querySelector('.stack-is-current')) return;
+                    this.close();
+                },
+
                 computePosition() {
                     const popup = this.$refs.popup;
                     if (!popup) return;
@@ -150,7 +156,7 @@
 
                 <teleport to="body">
                     <template v-if="isOpen">
-                        <div class="vizuall-popup-backdrop" :style="backdropStyle" @mousedown="close" />
+                        <div class="vizuall-popup-backdrop" :style="backdropStyle" @mousedown="onBackdropMousedown" />
                         <div ref="popup" class="vizuall-popup" :style="popupStyle">
                             <div class="vizuall-popup-header">
                                 <span class="vizuall-popup-title">{{ title }}</span>
@@ -185,6 +191,11 @@
                 html.dark .vizuall-popup-backdrop{background:rgba(0,0,0,.6);}
 
                 body.popup-group-open [data-reka-popper-content-wrapper]{z-index:4!important;}
+
+                /* When a Statamic stack/slide-over (asset browser etc.) is open,
+                   drop the popup behind it so the stack is fully interactive. */
+                body:has(.stack-is-current) .vizuall-popup { z-index: 1 !important; }
+                body:has(.stack-is-current) .vizuall-popup-backdrop { z-index: 0 !important; }
             `;
             document.head.appendChild(s);
         }
