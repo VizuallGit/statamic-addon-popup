@@ -19,7 +19,7 @@
             },
 
             data() {
-                return { isOpen: false, popupStyle: { opacity: 0 }, backdropStyle: {} };
+                return { isOpen: false, popupStyle: { opacity: 0, transform: 'scale(.95)' }, backdropStyle: {} };
             },
 
             created() {
@@ -46,10 +46,11 @@
                     // measure the correct height when content loads.
                     const cpRight      = this.cpRight();
                     const desiredWidth = Math.min(this.maxWidth, cpRight - 16);
-                    this.popupStyle    = { opacity: 0, width: `${desiredWidth}px` };
+                    this.popupStyle    = { opacity: 0, transform: 'scale(.95)', width: `${desiredWidth}px` };
                     this.backdropStyle = {};
                     this.isOpen        = true;
                     this._showTimer    = null;
+                    this._openedAt     = Date.now();
 
                     document.body.classList.add('popup-group-open');
                     this.$nextTick(() => {
@@ -88,7 +89,7 @@
 
                 close() {
                     this.isOpen = false;
-                    this.popupStyle = { opacity: 0 };
+                    this.popupStyle = { opacity: 0, transform: 'scale(.95)' };
                     document.body.classList.remove('popup-group-open');
                     this.unbindEvents();
                     this.triggerEl = null;
@@ -127,13 +128,17 @@
                     let top = Math.round((vh - popupH) / 2);
                     top = Math.max(8, Math.min(top, vh - popupH - 8));
 
-                    this.popupStyle    = { position: 'fixed', zIndex: 3, width: `${desiredWidth}px`, top: `${top}px`, left: `${left}px`, opacity: 1 };
+                    this.popupStyle    = { position: 'fixed', zIndex: 3, width: `${desiredWidth}px`, top: `${top}px`, left: `${left}px`, opacity: 1, transform: 'scale(1)' };
                     this.backdropStyle = { position: 'fixed', zIndex: 2, top: 0, left: 0, width: `${cpRight}px`, height: '100vh' };
                 },
 
                 bindEvents() {
                     this._onEscape = (e) => { if (e.key === 'Escape') this.close(); };
                     this._onScroll = (e) => {
+                        // Grace period: the CP may programmatically expand/scroll to
+                        // the section right as the popup opens — don't treat that as
+                        // a dismissing scroll.
+                        if (Date.now() - (this._openedAt || 0) < 900) return;
                         if (this.triggerEl && e.target?.contains?.(this.triggerEl)) this.close();
                     };
                     document.addEventListener('keydown', this._onEscape);
@@ -175,8 +180,9 @@
             const s = document.createElement('style');
             s.id = 'vizuall-popup-styles';
             s.textContent = `
-                .vizuall-popup-backdrop{background:rgba(0,0,0,.45);}
-                .vizuall-popup{background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,.25);min-width:300px;overflow:hidden;transition:opacity .1s ease;}
+                .vizuall-popup-backdrop{background:rgba(0,0,0,.45);animation:vzl-backdrop-in .18s ease;}
+                @keyframes vzl-backdrop-in{from{opacity:0;}to{opacity:1;}}
+                .vizuall-popup{background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,.25);min-width:300px;overflow:hidden;transition:opacity .18s ease,transform .18s ease;}
                 .vizuall-popup-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 8px;border-bottom:1px solid rgba(0,0,0,.07);}
                 .vizuall-popup-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(0,0,0,.4);}
                 .vizuall-popup-close{width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:3px;background:transparent;border:none;cursor:pointer;color:rgba(0,0,0,.35);font-size:12px;}
