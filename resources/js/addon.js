@@ -207,9 +207,15 @@
                    .portal-targets, which is position:fixed with z-index 2 — a stacking
                    context BELOW the popup (z 3). The modal's internal z-index 4 can't
                    escape it, so confirmations opened from inside a popup were invisible
-                   and seemed to do nothing. Lift the whole portal layer above the popup
-                   while one is open. */
-                body.popup-group-open .portal-targets{z-index:4!important;}
+                   and seemed to do nothing.
+                   Lift the portal layer ONLY while a modal is actually open in it:
+                   Live Preview also lives in .portal-targets, so an unconditional lift
+                   would put the entire preview surface above the popup and make popups
+                   unusable in Live Preview. Modal portal targets exist only while open.
+                   Also raise the modal's own target above sibling portals (live preview)
+                   inside the .portal-targets stacking context. */
+                body.popup-group-open:has([id^="portal-target-modal-"]) .portal-targets{z-index:4!important;}
+                body.popup-group-open [id^="portal-target-modal-"]{position:relative;z-index:10;}
 
                 /* When a Statamic stack/slide-over (asset browser etc.) is open,
                    drop the popup behind it so the stack is fully interactive. */
