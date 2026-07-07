@@ -88,6 +88,7 @@
                 },
 
                 close() {
+                    if (!this.isOpen) return;
                     this.isOpen = false;
                     this.popupStyle = { opacity: 0, transform: 'scale(.95)' };
                     document.body.classList.remove('popup-group-open');
@@ -152,8 +153,12 @@
             },
 
             beforeUnmount() {
-                document.body.classList.remove('popup-group-open');
-                this.unbindEvents();
+                // Only the instance that owns the open popup may clean up the
+                // global body class. Multiple (closed) instances exist per page
+                // and unmount during re-renders — removing the class here
+                // unconditionally would strip it from a sibling's open popup,
+                // breaking the z-index rule that lifts CP dropdowns above it.
+                this.close();
             },
 
             template: `
@@ -197,6 +202,14 @@
                 html.dark .vizuall-popup-backdrop{background:rgba(0,0,0,.6);}
 
                 body.popup-group-open [data-reka-popper-content-wrapper]{z-index:4!important;}
+
+                /* Statamic renders modals (e.g. grid "Delete Row" confirmation) into
+                   .portal-targets, which is position:fixed with z-index 2 — a stacking
+                   context BELOW the popup (z 3). The modal's internal z-index 4 can't
+                   escape it, so confirmations opened from inside a popup were invisible
+                   and seemed to do nothing. Lift the whole portal layer above the popup
+                   while one is open. */
+                body.popup-group-open .portal-targets{z-index:4!important;}
 
                 /* When a Statamic stack/slide-over (asset browser etc.) is open,
                    drop the popup behind it so the stack is fully interactive. */
